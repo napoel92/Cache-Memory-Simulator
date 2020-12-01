@@ -63,12 +63,18 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	/* initialize the Memory Data-Type: 2 level cache and main */
+	Memory memory(L1Assoc,L1Size,L1Cyc,L2Assoc,L2Size,L2Cyc,WrAlloc,BSize,MemCyc);
+
 	while (getline(file, line)) {
 
+		/* count the acsses to the memory */
+		++memory.acessNum;
+
 		stringstream ss(line);
-		string address;
+		string address_str;
 		char operation = 0; // read (R) or write (W)
-		if (!(ss >> operation >> address)) {
+		if (!(ss >> operation >> address_str)) {
 			// Operation appears in an Invalid format
 			cout << "Command Format error" << endl;
 			return 0;
@@ -77,13 +83,30 @@ int main(int argc, char **argv) {
 		// DEBUG - remove this line
 		cout << "operation: " << operation;
 
-		string cutAddress = address.substr(2); // Removing the "0x" part of the address
+		string cutAddress = address_str.substr(2); // Removing the "0x" part of the address
 
 		// DEBUG - remove this line
 		cout << ", address (hex)" << cutAddress;
 
 		unsigned long int num = 0;
 		num = strtoul(cutAddress.c_str(), NULL, 16);
+		unsigned long int address = num;
+		
+
+		/******************************** MEMORY_HANDLE_STARTS **************************************/
+
+		++memory.L1.acssesNum;
+		if( memory.L1.hasBlockOf(address) ){
+			L1_Hit(address,operation);
+			continue;
+		}
+        else{ ++memory.L1.missNum;}
+		
+        
+
+
+
+		/******************************** MEMORY_HANDLE_ENDS **************************************/
 
 		// DEBUG - remove this line
 		cout << " (dec) " << num << endl;
