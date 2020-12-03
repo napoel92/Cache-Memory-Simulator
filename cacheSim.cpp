@@ -92,19 +92,35 @@ int main(int argc, char **argv) {
 		num = strtoul(cutAddress.c_str(), NULL, 16);
 		unsigned long int address = num;
 		
-
 		/******************************** MEMORY_HANDLE_STARTS **************************************/
+		/*******************************************************************************************/
 
+		
 		++memory.L1.acssesNum;
+		memory.totalTime += memory.L1.cyclesNum;
+		//--------------------------------------
 		if( memory.L1.hasBlockOf(address) ){
-			L1_Hit(address,operation);
+			memory.L1_Hit(address,operation);
 			continue;
 		}
         else{ ++memory.L1.missNum;}
-		
-        
+	
+
+		++memory.L2.acssesNum;
+       	memory.totalTime += memory.L2.cyclesNum;
+		//--------------------------------------
+		if(  memory.L2.hasBlockOf(address) ){
+			memory.L2_Hit(address,operation);
+			continue;
+		}
+		else{++memory.L2.missNum;}
 
 
+       	
+		memory.totalTime += memory.cyclesNum;
+		//--------------------------------------
+		//todo level3
+		continue;
 
 		/******************************** MEMORY_HANDLE_ENDS **************************************/
 
@@ -113,9 +129,9 @@ int main(int argc, char **argv) {
 
 	}
 
-	double L1MissRate;
-	double L2MissRate;
-	double avgAccTime;
+	double L1MissRate = (double)memory.L1.missNum/memory.L1.acssesNum;
+	double L2MissRate = (double)memory.L2.missNum/memory.L2.acssesNum;
+	double avgAccTime = (double)memory.totalTime/memory.acessNum;
 
 	printf("L1miss=%.03f ", L1MissRate);
 	printf("L2miss=%.03f ", L2MissRate);
