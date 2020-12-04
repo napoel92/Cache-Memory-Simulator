@@ -9,6 +9,8 @@
 
 static const char READ = 'r';
 static const char WRITE = 'W';
+static const bool DIRTY = true;
+static const bool NOT_DIRTY = false;
 
 
 /*  helper function for extracting decimal-integers 
@@ -24,14 +26,14 @@ struct Block{
     
 // blocks data-------------------
     bool valid;
-    bool dirty;
+    bool dirtyBit;
     unsigned long int tag; 
     unsigned long int data;
     unsigned long int statusLRU; 
 // ------------------------------------------------------------------------------------
-    explicit Block(bool valid=false, bool dirty=false , unsigned long int tag=0,
+    explicit Block(bool valid=false, bool dirtyBit=NOT_DIRTY , unsigned long int tag=0,
                     unsigned long int data=0, unsigned long int statusLRU=0 ):
-                    valid(valid), dirty(dirty), tag(tag), data(data){}
+                    valid(valid), dirtyBit(dirtyBit), tag(tag), data(data){}
 //--------------------------------------------------------------------------------------
 };
 
@@ -178,61 +180,98 @@ struct Memory{
             L2.updateLRU(address); // read-request sent to L2
         }
         else{ assert( (L1.hasBlockOf(address)==false) && (L2.hasBlockOf(address)==false) );
-            tag = L1.getTag(address);
             free = L2.freeWayFor(address);
+            tag = L1.getTag(address);
             // no-need for LRU-policy managing. read-request sent to Mem
         }
         assert( free->valid==false );
         free->valid = true;
         free->tag = tag;
         free->data = address;
-        assert ( free->dirty==false );
+        assert ( free->dirtyBit==NOT_DIRTY );
 
         return free;
     }
+
+    void evictFrom(Cache& Li,unsigned long int address){
+        unsigned long int evictedAddress = Li.getBlock(address).data;
+        bool bit = Li.getBlock(address).dirtyBit;
+
+        if( bit==DIRTY ){
+
+            if( &Li == &L1 ){
+                L2.updateLRU( evictedAddress ).dirtyBit = DIRTY;
+            }
+            else{ assert( &Li == &L2 );
+                //todo level 3
+            }
+        }
+    }
+
 
     std::vector<Block>::iterator evictAndPut(unsigned long int address){
         std::vector<Block>::iterator evicted;
         unsigned long int tag;
 
+        // miss in L1 and hit in L2
         if( (L1.hasBlockOf(address)==false) && (L2.hasBlockOf(address)) ){
             tag = L1.getTag(address);
             evicted = L1.leastRecentlyUsed(address);
+            L2.updateLRU(address);
+            evictFrom(L1,address);
         }
+        // miss in L2 thus hit in Mem
         else{ assert( (L1.hasBlockOf(address)==false) && (L2.hasBlockOf(address)==false) );
             tag = L2.getTag(address);
             evicted = L2.leastRecentlyUsed(address);
+            evictFrom(L2,address);
         }
 
+        assert( evicted->valid==true );
+        evicted->tag = tag;
+        evicted->data = address;
+        assert ( evicted->dirtyBit==NOT_DIRTY );
 
+        return evicted;
     }
+
+
 
     void L1_Hit(unsigned long address,char operation){
        Block& target = L1.updateLRU(address);
-       target.dirty = (operation=='w') ? true :  target.dirty;
+       target.dirtyBit = (operation=='w') ? DIRTY :  target.dirtyBit;
     }
 
 
-    void L2_Hit(unsigned long address,char hit){
+    void L2_Hit(unsigned long address,char operation){
         std::vector<Block> set = L2.getSet(address);
         char hit = operation;
-        int usedWays = 0;
-        for( int i=0 ; i<set.size() ; ++i ) usedWayws = (set[i].valid) ? (usedWayws+1) : (usedWayws);
+        unsigned int usedWays = 0;
+        for( unsigned int i=0 ; i<set.size() ; ++i ) usedWays = (set[i].valid) ? (usedWays+1) : (usedWays);
         
-
         if( WRITE==hit ){
-            if( writeAllocatePolicy ){
-                if( usedWayws!=set.size() ){
-                    putInFreeWay(address)->dirty=true;
+            if( writeAllocatePolicy ){//----->> read_Hit in L2
+                if( usedWays!=set.size() ){
+                    putInFreeWay(address)->dirtyBit=DIRTY;
                     return;
                 }
-                //else - evictANDput
-
+                //else - no availible way
+                evictAndPut(address)->dirtyBit=DIRTY;
+                return;
             }
-            //else: noWriteAllocatePolicy
-            L2.updateLRU(address).dirty = true;
+            //else: noWriteAllocatePolicy----->> write_Hit in L2
+            L2.updateLRU(address).dirtyBit = DIRTY;
+            return;
+
 
         }else{ assert( READ==hit );
+            if( usedWays!=set.size() ){
+                putInFreeWay(address);
+                return;
+            }
+            //else - no availible way
+            evictAndPut(address);
+            return;
 
         }
     }
