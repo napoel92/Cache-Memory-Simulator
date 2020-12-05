@@ -121,7 +121,9 @@ int main(int argc, char **argv) {
 		memory.L1_and_L2_Miss(address,operation);
 		continue;
 
+		/*******************************************************************************************/
 		/******************************** MEMORY_HANDLE_ENDS **************************************/
+
 
 		// DEBUG - remove this line
 		cout << " (dec) " << num << endl;
