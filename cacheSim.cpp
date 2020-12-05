@@ -116,10 +116,9 @@ int main(int argc, char **argv) {
 		else{++memory.L2.missNum;}
 
 
-       	
 		memory.totalTime += memory.cyclesNum;
 		//--------------------------------------
-		//todo level3
+		memory.L1_and_L2_Miss(address,operation);
 		continue;
 
 		/******************************** MEMORY_HANDLE_ENDS **************************************/

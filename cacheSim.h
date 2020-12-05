@@ -11,6 +11,9 @@ static const char READ = 'r';
 static const char WRITE = 'W';
 static const bool DIRTY = true;
 static const bool NOT_DIRTY = false;
+static const bool NO_WRITE_ALLOCATE = false;
+static const bool WRITE_ALLOCATE = true;
+static const int LEAST_RECENTLY_USED = 0;
 
 
 /*  helper function for extracting decimal-integers 
@@ -47,6 +50,7 @@ struct Cache{
     const unsigned long int layerSize;  
     const unsigned long int blockSize;
     const unsigned long int cyclesNum;
+    const unsigned long int totalWaysNum;
     //for statistics:
     int missNum;
     int acssesNum;
@@ -55,7 +59,7 @@ struct Cache{
     Cache(unsigned long int associativity, unsigned long int layerSize, unsigned long int blockSize, unsigned long int cyclesNum):
             sets(  pow(2,layerSize-blockSize-associativity), std::vector<Block>( pow(2,associativity),Block() )  ),
             lruPolicy( sets.size() , 0 ), layerSize(layerSize),blockSize(blockSize),
-            cyclesNum(cyclesNum),missNum(0),acssesNum(0){
+            cyclesNum(cyclesNum),totalWaysNum( sets[0].size() ),missNum(0),acssesNum(0){
     }
 
     Cache operator=(const Cache&)=delete;
@@ -78,7 +82,7 @@ struct Cache{
 
 
     
-    Block& getBlock(unsigned long int address){
+    std::vector<Block>::iterator getBlock(unsigned long int address){
         assert( hasBlockOf(address) );
         
         std::vector<Block>& set = getSet(address);
@@ -90,7 +94,7 @@ struct Cache{
                 break;
             }
         }
-        return *block;
+        return block;
     }
 
 
@@ -129,21 +133,21 @@ struct Cache{
     }
 
 
-    Block& updateLRU(int address){
+    std::vector<Block>::iterator updateLRU(int address){
 
         int i = bitExtracted(address,layerSize-blockSize-sets[0].size(),blockSize+1);
-        getBlock(address).statusLRU = ++lruPolicy[i];
+        getBlock(address)->statusLRU = ++lruPolicy[i];
 
         class compare{
-            bool operator()(int x,int y)const{
-                return (x < y) ;
+        public:
+            bool operator()(const Block& x,const Block& y)const{
+                return (x.statusLRU < y.statusLRU) ;
             }
         };
 
         std::sort(sets[i].begin(), sets[i].end(), compare());
         return getBlock(address);
     }
-
 
 };
 
@@ -153,7 +157,7 @@ struct Memory{
     Cache L1;
     Cache L2;
 
-    bool writeAllocatePolicy;
+    bool writePolicy;
     unsigned long int blockSize; // log2(blockSize)
     unsigned long int cyclesNum;
     //for statistics:
@@ -163,10 +167,11 @@ struct Memory{
 
     Memory(unsigned long int associativity1, unsigned long int Size1, unsigned long int cyclesNum1,
           unsigned long int associativity2, unsigned long int Size2, unsigned long int cyclesNum2,
-          bool writeAllocatePolicy, unsigned long int blockSize, unsigned long int cyclesNum3):
+          bool writePolicy, unsigned long int blockSize, unsigned long int cyclesNum3):
           L1(associativity1, Size1, blockSize,cyclesNum1), L2(associativity2, Size2, blockSize,cyclesNum2),
-          writeAllocatePolicy(writeAllocatePolicy),blockSize(blockSize),cyclesNum(cyclesNum3), totalTime(0),acessNum(0){
+          writePolicy(writePolicy),blockSize(blockSize),cyclesNum(cyclesNum3), totalTime(0),acessNum(0){
     }
+
 
 
     //assumes that Level_i got miss and that Level_i+1 got hit
@@ -193,21 +198,14 @@ struct Memory{
         return free;
     }
 
-    void evictFrom(Cache& Li,unsigned long int address){
-        unsigned long int evictedAddress = Li.getBlock(address).data;
-        bool bit = Li.getBlock(address).dirtyBit;
+    void evictFrom(Cache& Li,unsigned long int address){//xxx
+        unsigned long int evictedAddress = Li.getSet(address)[LEAST_RECENTLY_USED].data;
+        bool& bit = Li.getSet(address)[LEAST_RECENTLY_USED].dirtyBit;
 
-        if( bit==DIRTY ){
-
-            if( &Li == &L1 ){
-                L2.updateLRU( evictedAddress ).dirtyBit = DIRTY;
-            }
-            else{ assert( &Li == &L2 );
-                //todo level 3
-            }
-        }
+        if( bit==DIRTY  &&  &Li==&L1 )  L2.updateLRU( evictedAddress )->dirtyBit=DIRTY; // write L2
+        bit = NOT_DIRTY;            
     }
-
+            
 
     std::vector<Block>::iterator evictAndPut(unsigned long int address){
         std::vector<Block>::iterator evicted;
@@ -217,20 +215,22 @@ struct Memory{
         if( (L1.hasBlockOf(address)==false) && (L2.hasBlockOf(address)) ){
             tag = L1.getTag(address);
             evicted = L1.leastRecentlyUsed(address);
-            L2.updateLRU(address);
+            L2.updateLRU(address); //  <----- read L2
             evictFrom(L1,address);
+            L1.updateLRU(address); // <-----write\read L1
         }
-        // miss in L2 thus hit in Mem
+        // miss in L2 thus acsses Mem
         else{ assert( (L1.hasBlockOf(address)==false) && (L2.hasBlockOf(address)==false) );
             tag = L2.getTag(address);
             evicted = L2.leastRecentlyUsed(address);
             evictFrom(L2,address);
+            L2.updateLRU(address); // <-----write\read L1
         }
 
         assert( evicted->valid==true );
         evicted->tag = tag;
         evicted->data = address;
-        assert ( evicted->dirtyBit==NOT_DIRTY );
+        assert ( evicted->dirtyBit == NOT_DIRTY );
 
         return evicted;
     }
@@ -238,31 +238,34 @@ struct Memory{
 
 
     void L1_Hit(unsigned long address,char operation){
-       Block& target = L1.updateLRU(address);
-       target.dirtyBit = (operation=='w') ? DIRTY :  target.dirtyBit;
+       std::vector<Block>::iterator target = L1.updateLRU(address);
+       target->dirtyBit = (operation=='w') ? DIRTY :  target->dirtyBit;
     }
 
 
     void L2_Hit(unsigned long address,char operation){
-        std::vector<Block> set = L2.getSet(address);
+        std::vector<Block> set = L1.getSet(address);
         char hit = operation;
         unsigned int usedWays = 0;
         for( unsigned int i=0 ; i<set.size() ; ++i ) usedWays = (set[i].valid) ? (usedWays+1) : (usedWays);
         
         if( WRITE==hit ){
-            if( writeAllocatePolicy ){//----->> read_Hit in L2
-                if( usedWays!=set.size() ){
-                    putInFreeWay(address)->dirtyBit=DIRTY;
+
+            if( writePolicy==WRITE_ALLOCATE ){//----->> read_Hit in L2
+                if( usedWays < L1.totalWaysNum ){
+                    putInFreeWay(address) -> dirtyBit=DIRTY;
                     return;
                 }
-                //else - no availible way
-                evictAndPut(address)->dirtyBit=DIRTY;
+                else{ assert( usedWays == L1.totalWaysNum );
+                    evictAndPut(address) -> dirtyBit=DIRTY;
+                    return;
+                }
+
+            }else{ assert( writePolicy==NO_WRITE_ALLOCATE );//----->> write_Hit in L2
+                L2.updateLRU(address) -> dirtyBit=DIRTY;
                 return;
             }
-            //else: noWriteAllocatePolicy----->> write_Hit in L2
-            L2.updateLRU(address).dirtyBit = DIRTY;
-            return;
-
+            
 
         }else{ assert( READ==hit );
             if( usedWays!=set.size() ){
@@ -272,8 +275,66 @@ struct Memory{
             //else - no availible way
             evictAndPut(address);
             return;
-
         }
+    }
+
+
+
+    void L2_snoops_L1(unsigned long int address){//xxx
+        unsigned long int evictedAddress_L2 = L2.getSet(address)[LEAST_RECENTLY_USED].data;
+        if( L1.hasBlockOf(evictedAddress_L2)==false ){
+            return;
+        }
+
+        *( L1.getBlock(evictedAddress_L2) ) = Block();
+        // if the data is dirty in L1 ==>> we turn the dirtyBit also in L2
+    }
+
+
+    void handle_L2_Miss(unsigned long int address){
+        std::vector<Block> set = L2.getSet(address);
+        unsigned int usedWays = 0;
+        for( unsigned int i=0 ; i<set.size() ; ++i ) usedWays = (set[i].valid) ? (usedWays+1) : (usedWays);
+        
+        if( usedWays < L2.totalWaysNum ){
+           //todo
+            return;
+        }
+        else{ assert( usedWays == L2.totalWaysNum );
+            //todo
+            return;
+        }
+    }
+    
+
+
+    void handle_L1_Miss(unsigned long int address, char operation){
+        std::vector<Block> set = L1.getSet(address);
+        unsigned int usedWays = 0;
+        for( unsigned int i=0 ; i<set.size() ; ++i ) usedWays = (set[i].valid) ? (usedWays+1) : (usedWays);
+        
+
+        if( usedWays < L1.totalWaysNum ){
+           //todo
+            return;
+        }
+        else{ assert( usedWays == L1.totalWaysNum );
+            //todo
+            return;
+        }
+
+    }
+
+    void L1_and_L2_Miss(unsigned long int address,char operation){
+        if ( (writePolicy==NO_WRITE_ALLOCATE) && (operation == 'w') ) {
+            /* we only need to write the data to the
+             block that is allready i the main memory */
+            return;
+        }
+        
+        assert( (writePolicy==WRITE_ALLOCATE) || (operation == 'r') );
+        handle_L2_Miss(address);
+        handle_L1_Miss(address,operation);
     }
 
 
