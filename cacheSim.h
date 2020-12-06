@@ -197,7 +197,7 @@ struct Memory{
         else{ assert( (L1.hasBlockOf(address)==false) && (L2.hasBlockOf(address)==false) );
             targetCache = &L2;
             free = L2.freeWayFor(address);
-            tag = L1.getTag(address);
+            tag = L2.getTag(address);
             // no-need for LRU-policy managing. read-request sent to Mem
         }
         assert( free->valid==false );
@@ -207,7 +207,7 @@ struct Memory{
         assert ( free->dirtyBit==NOT_DIRTY );
 
         targetCache->updateLRU(address); // <---- read target cache ( L1 or L2 )
-        return free;
+        return targetCache->getBlock(address);
     }
 
 
@@ -252,7 +252,7 @@ struct Memory{
         assert ( evicted->dirtyBit == NOT_DIRTY );
 
         targetCache->updateLRU(address); // <---- read target cache ( L1 or L2 )
-        return evicted;
+        return targetCache->getBlock(address);
     }
 
 
@@ -260,7 +260,7 @@ struct Memory{
 
     void L1_Hit(unsigned long address,char operation){
        std::vector<Block>::iterator modified = L1.updateLRU(address);
-       modified->dirtyBit = (operation=='w') ? DIRTY :  modified->dirtyBit;
+       modified->dirtyBit = (operation==WRITE) ? DIRTY :  modified->dirtyBit;
     }
 
 
@@ -332,31 +332,32 @@ struct Memory{
 
     void handle_L1_Miss(unsigned long int address, char operation){
         std::vector<Block>& set = L1.getSet(address);
-        std::vector<Block>::iterator modified;
         unsigned int usedWays = 0;
         for( unsigned int i=0 ; i<set.size() ; ++i ) usedWays = (set[i].valid) ? (usedWays+1) : (usedWays);
         
         if( usedWays < L1.totalWaysNum ){
-            modified = putInFreeWay(address);
+            putInFreeWay(address);
         }
         else{ assert( usedWays == L1.totalWaysNum );
             // ??? visit ???
-            modified = evictAndPut(address);
+            evictAndPut(address);
         }
         
-        modified->dirtyBit = (operation=='w') ? DIRTY :  modified->dirtyBit;
+        std::vector<Block>::iterator modified = L1.getBlock(address);
+        modified->dirtyBit = (operation==WRITE) ? DIRTY :  modified->dirtyBit;
         return;
     }
+        
 
 
 
     void L1_and_L2_Miss(unsigned long int address,char operation){
-        if ( (writePolicy==NO_WRITE_ALLOCATE) && (operation == 'w') ){
+        if ( (writePolicy==NO_WRITE_ALLOCATE) && (operation == WRITE) ){
             /*  we "only" need to write the data into the
                 block that is allready in the main memory   */
                 return;
         }
-        assert( (writePolicy==WRITE_ALLOCATE) || (operation == 'r') );
+        assert( (writePolicy==WRITE_ALLOCATE) || (operation == READ) );
         handle_L2_Miss(address);
         handle_L1_Miss(address,operation);
     }
