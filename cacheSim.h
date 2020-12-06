@@ -67,25 +67,25 @@ struct Cache{
 
 
     std::vector<Block>& getSet(unsigned long int address){
-        int waysNum = sets[0].size();
-        int bitsNum = layerSize-blockSize-waysNum;
-        int index = bitExtracted(address,bitsNum,blockSize+1);
+        int waysBits = log2(totalWaysNum);
+        int setBits = layerSize-blockSize-waysBits;
+        int index = bitExtracted(address,setBits,blockSize+1);
 
         return sets[index];
     }
 
 
     unsigned long int getTag(unsigned long int address){
-        int waysNum = sets[0].size();
-        int bitsNum = 32-(layerSize-waysNum+1);
+        int waysBits = log2(totalWaysNum);
+        int bitsNum = 32-(layerSize-waysBits+1);
 
-        return bitExtracted(address,bitsNum,layerSize-waysNum+1);
+        return bitExtracted(address,bitsNum,layerSize-waysBits+1);
     }
 
 
     
     std::vector<Block>::iterator getBlock(unsigned long int address){
-        assert( hasBlockOf(address) );
+        // assert( hasBlockOf(address) );
         
         std::vector<Block>& set = getSet(address);
         unsigned long int tag = getTag(address);
@@ -102,7 +102,7 @@ struct Cache{
 
     // assums THERE IS a free way
     std::vector<Block>::iterator freeWayFor(unsigned long int address){
-        int index= bitExtracted(address,layerSize-blockSize-sets[0].size(),blockSize+1);
+        int index= bitExtracted(address,layerSize-blockSize-log2(totalWaysNum),blockSize+1);
         std::vector<Block>::iterator i;
         for( i=sets[index].begin() ; i!=sets[index].end(); i++){
             if ( i->valid==false ){
@@ -116,9 +116,9 @@ struct Cache{
 
     // assums THERE IS a free way
     std::vector<Block>::iterator leastRecentlyUsed(unsigned long int address){
-        int index= bitExtracted(address,layerSize-blockSize-sets[0].size(),blockSize+1);
+        int index= bitExtracted(address,layerSize-blockSize-log2(totalWaysNum),blockSize+1);
         std::vector<Block>::iterator it = sets[index].begin();
-        assert( it->valid==false );
+        assert( it->valid==true );
         return it;
     }
 
@@ -140,7 +140,7 @@ struct Cache{
 
     std::vector<Block>::iterator updateLRU(int address){
 
-        int i = bitExtracted(address,layerSize-blockSize-sets[0].size(),blockSize+1);
+        int i = bitExtracted(address,layerSize-blockSize-log2(totalWaysNum),blockSize+1);
         getBlock(address)->statusLRU = ++lruPolicy[i];
 
         class compare{
@@ -184,15 +184,18 @@ struct Memory{
 
     //assumes that Level_i got miss and that Level_i+1 got hit
     std::vector<Block>::iterator putInFreeWay(unsigned long int address){
+        Cache* targetCache;
         std::vector<Block>::iterator free;
         unsigned long int tag;
         
         if( (L1.hasBlockOf(address)==false) && (L2.hasBlockOf(address)) ){
+            targetCache = &L1;
             free = L1.freeWayFor(address);
             tag = L1.getTag(address);
             L2.updateLRU(address); // read-request sent to L2
         }
         else{ assert( (L1.hasBlockOf(address)==false) && (L2.hasBlockOf(address)==false) );
+            targetCache = &L2;
             free = L2.freeWayFor(address);
             tag = L1.getTag(address);
             // no-need for LRU-policy managing. read-request sent to Mem
@@ -203,39 +206,44 @@ struct Memory{
         free->data = address;
         assert ( free->dirtyBit==NOT_DIRTY );
 
+        targetCache->updateLRU(address); // <---- read target cache ( L1 or L2 )
         return free;
     }
 
 
 
     void evictFrom(Cache& Li,unsigned long int address){//xxx
+        assert( Li.getSet(address)[LEAST_RECENTLY_USED].valid );
         unsigned long int evictedAddress = Li.getSet(address)[LEAST_RECENTLY_USED].data;
         bool& bit = Li.getSet(address)[LEAST_RECENTLY_USED].dirtyBit;
 
-        if( bit==DIRTY  &&  &Li==&L1 )  L2.updateLRU( evictedAddress )->dirtyBit=DIRTY; // write L2
+        if( bit==DIRTY  &&  &Li==&L1 ){
+            L2.updateLRU( evictedAddress )->dirtyBit=DIRTY; // write L2
+        }
         bit = NOT_DIRTY;            
     }
             
 
 
     std::vector<Block>::iterator evictAndPut(unsigned long int address){
+        Cache* targetCache;
         std::vector<Block>::iterator evicted;
         unsigned long int tag;
 
         // miss in L1 and hit in L2
         if( (L1.hasBlockOf(address)==false) && (L2.hasBlockOf(address)) ){
-            tag = L1.getTag(address);
+            targetCache = &L1;
             evicted = L1.leastRecentlyUsed(address);
             L2.updateLRU(address); //  <----- read L2        ????? nutrelize in level 3   ????
             evictFrom(L1,address);
-            L1.updateLRU(address); // <---- read L1
+            tag = L1.getTag(address);
         }
         // miss in L2 thus acsses Mem
         else{ assert( (L1.hasBlockOf(address)==false) && (L2.hasBlockOf(address)==false) );
-            tag = L2.getTag(address);
+            targetCache = &L2;
             evicted = L2.leastRecentlyUsed(address);
             evictFrom(L2,address);
-            L2.updateLRU(address); // <----- read L2
+            tag = L2.getTag(address);
         }
 
         assert( evicted->valid==true );
@@ -243,6 +251,7 @@ struct Memory{
         evicted->data = address;
         assert ( evicted->dirtyBit == NOT_DIRTY );
 
+        targetCache->updateLRU(address); // <---- read target cache ( L1 or L2 )
         return evicted;
     }
 
@@ -250,14 +259,14 @@ struct Memory{
 
 
     void L1_Hit(unsigned long address,char operation){
-       std::vector<Block>::iterator target = L1.updateLRU(address);
-       target->dirtyBit = (operation=='w') ? DIRTY :  target->dirtyBit;
+       std::vector<Block>::iterator modified = L1.updateLRU(address);
+       modified->dirtyBit = (operation=='w') ? DIRTY :  modified->dirtyBit;
     }
 
 
 
     void L2_Hit(unsigned long address,char operation){
-        std::vector<Block> set = L1.getSet(address);
+        std::vector<Block>& set = L1.getSet(address);
         char hit = operation;
         unsigned int usedWays = 0;
         for( unsigned int i=0 ; i<set.size() ; ++i ) usedWays = (set[i].valid) ? (usedWays+1) : (usedWays);
@@ -296,15 +305,15 @@ struct Memory{
         unsigned long int evictedAddress_L2 = L2.getSet(address)[LEAST_RECENTLY_USED].data;
         if( L1.hasBlockOf(evictedAddress_L2)==false ) return;
 
-        *( L1.getBlock(evictedAddress_L2) ) = Block();
-        // if the data is dirty in L1 ==>> we turn the dirtyBit<1 also in L2
+        (*L1.getBlock(evictedAddress_L2)) = Block(); 
+        // if the data is dirty in L1 ==>> we assign dirtyBit=DIRTY also in L2
         }//                                       ( meaningless )
     
 
 
 
     void handle_L2_Miss(unsigned long int address){
-        std::vector<Block> set = L2.getSet(address);
+        std::vector<Block>& set = L2.getSet(address);
         unsigned int usedWays = 0;
         for( unsigned int i=0 ; i<set.size() ; ++i ) usedWays = (set[i].valid) ? (usedWays+1) : (usedWays);
         
@@ -322,20 +331,21 @@ struct Memory{
 
 
     void handle_L1_Miss(unsigned long int address, char operation){
-        std::vector<Block> set = L1.getSet(address);
+        std::vector<Block>& set = L1.getSet(address);
+        std::vector<Block>::iterator modified;
         unsigned int usedWays = 0;
         for( unsigned int i=0 ; i<set.size() ; ++i ) usedWays = (set[i].valid) ? (usedWays+1) : (usedWays);
         
-
-            if( usedWays < L1.totalWaysNum ){
-                putInFreeWay(address) -> dirtyBit=DIRTY;
-                return;
-            }
-            else{ assert( usedWays == L1.totalWaysNum );
-                // ??? visit ???
-                evictAndPut(address) -> dirtyBit=DIRTY;
-                return;
-            }
+        if( usedWays < L1.totalWaysNum ){
+            modified = putInFreeWay(address);
+        }
+        else{ assert( usedWays == L1.totalWaysNum );
+            // ??? visit ???
+            modified = evictAndPut(address);
+        }
+        
+        modified->dirtyBit = (operation=='w') ? DIRTY :  modified->dirtyBit;
+        return;
     }
 
 
