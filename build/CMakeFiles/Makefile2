@@ -72,7 +72,7 @@ CMAKE_BINARY_DIR = C:\Users\napoel92\Desktop\Old_Courses\comSTR\projects\new\hw2
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/cache.dir/all
+all: CMakeFiles/cacheSim.dir/all
 
 .PHONY : all
 
@@ -110,7 +110,7 @@ clean: CMakeFiles/ContinuousConfigure.dir/clean
 clean: CMakeFiles/ContinuousBuild.dir/clean
 clean: CMakeFiles/ContinuousTest.dir/clean
 clean: CMakeFiles/ContinuousCoverage.dir/clean
-clean: CMakeFiles/cache.dir/clean
+clean: CMakeFiles/cacheSim.dir/clean
 
 .PHONY : clean
 
@@ -871,31 +871,31 @@ CMakeFiles/ContinuousCoverage.dir/clean:
 .PHONY : CMakeFiles/ContinuousCoverage.dir/clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/cache.dir
+# Target rules for target CMakeFiles/cacheSim.dir
 
 # All Build rule for target.
-CMakeFiles/cache.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\cache.dir\build.make CMakeFiles/cache.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\cache.dir\build.make CMakeFiles/cache.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=C:\Users\napoel92\Desktop\Old_Courses\comSTR\projects\new\hw2\Cache-Memory-Simulator\build\CMakeFiles --progress-num=1,2 "Built target cache"
-.PHONY : CMakeFiles/cache.dir/all
+CMakeFiles/cacheSim.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\cacheSim.dir\build.make CMakeFiles/cacheSim.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\cacheSim.dir\build.make CMakeFiles/cacheSim.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=C:\Users\napoel92\Desktop\Old_Courses\comSTR\projects\new\hw2\Cache-Memory-Simulator\build\CMakeFiles --progress-num=1,2 "Built target cacheSim"
+.PHONY : CMakeFiles/cacheSim.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/cache.dir/rule: cmake_check_build_system
+CMakeFiles/cacheSim.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start C:\Users\napoel92\Desktop\Old_Courses\comSTR\projects\new\hw2\Cache-Memory-Simulator\build\CMakeFiles 2
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 CMakeFiles/cache.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 CMakeFiles/cacheSim.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start C:\Users\napoel92\Desktop\Old_Courses\comSTR\projects\new\hw2\Cache-Memory-Simulator\build\CMakeFiles 0
-.PHONY : CMakeFiles/cache.dir/rule
+.PHONY : CMakeFiles/cacheSim.dir/rule
 
 # Convenience name for target.
-cache: CMakeFiles/cache.dir/rule
+cacheSim: CMakeFiles/cacheSim.dir/rule
 
-.PHONY : cache
+.PHONY : cacheSim
 
 # clean rule for target.
-CMakeFiles/cache.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\cache.dir\build.make CMakeFiles/cache.dir/clean
-.PHONY : CMakeFiles/cache.dir/clean
+CMakeFiles/cacheSim.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\cacheSim.dir\build.make CMakeFiles/cacheSim.dir/clean
+.PHONY : CMakeFiles/cacheSim.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

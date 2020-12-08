@@ -1,7 +1,7 @@
 [
 {
   "directory": "C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/build",
-  "command": "C:\\TDM-GCC-64\\bin\\g++.exe    -std=c++11 -Wall -Werror -pedantic-errors -g   -o CMakeFiles\\cache.dir\\cacheSim.cpp.obj -c C:\\Users\\napoel92\\Desktop\\Old_Courses\\comSTR\\projects\\new\\hw2\\Cache-Memory-Simulator\\cacheSim.cpp",
+  "command": "C:\\TDM-GCC-64\\bin\\g++.exe    -std=c++11 -Wall -Werror -pedantic-errors -g   -o CMakeFiles\\cacheSim.dir\\cacheSim.cpp.obj -c C:\\Users\\napoel92\\Desktop\\Old_Courses\\comSTR\\projects\\new\\hw2\\Cache-Memory-Simulator\\cacheSim.cpp",
   "file": "C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/cacheSim.cpp"
 }
 ]

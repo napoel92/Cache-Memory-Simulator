@@ -1,0 +1,3 @@
+"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\cacheSim.dir/objects.a
+C:\TDM-GCC-64\bin\ar.exe cr CMakeFiles\cacheSim.dir/objects.a @CMakeFiles\cacheSim.dir\objects1.rsp
+C:\TDM-GCC-64\bin\g++.exe -std=c++11 -Wall -Werror -pedantic-errors -g   -Wl,--whole-archive CMakeFiles\cacheSim.dir/objects.a -Wl,--no-whole-archive  -o cacheSim.exe -Wl,--out-implib,libcacheSim.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\cacheSim.dir\linklibs.rsp

@@ -27,7 +27,7 @@ C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simul
 C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/build/CMakeFiles/ContinuousBuild.dir
 C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/build/CMakeFiles/ContinuousTest.dir
 C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/build/CMakeFiles/ContinuousCoverage.dir
-C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/build/CMakeFiles/cache.dir
+C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/build/CMakeFiles/cacheSim.dir
 C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/build/CMakeFiles/package.dir
 C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/build/CMakeFiles/test.dir
 C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/build/CMakeFiles/edit_cache.dir

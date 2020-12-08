@@ -1,0 +1,32 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/cacheSim.cpp
+cstdlib
+-
+iostream
+-
+fstream
+-
+sstream
+-
+cacheSim.h
+C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/cacheSim.h
+
+C:/Users/napoel92/Desktop/Old_Courses/comSTR/projects/new/hw2/Cache-Memory-Simulator/cacheSim.h
+vector
+-
+cmath
+-
+cassert
+-
+algorithm
+-
+string
+-
+

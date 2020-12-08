@@ -527,17 +527,17 @@ ContinuousCoverage/fast:
 .PHONY : ContinuousCoverage/fast
 
 #=============================================================================
-# Target rules for targets named cache
+# Target rules for targets named cacheSim
 
 # Build rule for target.
-cache: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 cache
-.PHONY : cache
+cacheSim: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 cacheSim
+.PHONY : cacheSim
 
 # fast build rule for target.
-cache/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\cache.dir\build.make CMakeFiles/cache.dir/build
-.PHONY : cache/fast
+cacheSim/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\cacheSim.dir\build.make CMakeFiles/cacheSim.dir/build
+.PHONY : cacheSim/fast
 
 cacheSim.obj: cacheSim.cpp.obj
 
@@ -545,7 +545,7 @@ cacheSim.obj: cacheSim.cpp.obj
 
 # target to build an object file
 cacheSim.cpp.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\cache.dir\build.make CMakeFiles/cache.dir/cacheSim.cpp.obj
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\cacheSim.dir\build.make CMakeFiles/cacheSim.dir/cacheSim.cpp.obj
 .PHONY : cacheSim.cpp.obj
 
 cacheSim.i: cacheSim.cpp.i
@@ -554,7 +554,7 @@ cacheSim.i: cacheSim.cpp.i
 
 # target to preprocess a source file
 cacheSim.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\cache.dir\build.make CMakeFiles/cache.dir/cacheSim.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\cacheSim.dir\build.make CMakeFiles/cacheSim.dir/cacheSim.cpp.i
 .PHONY : cacheSim.cpp.i
 
 cacheSim.s: cacheSim.cpp.s
@@ -563,7 +563,7 @@ cacheSim.s: cacheSim.cpp.s
 
 # target to generate assembly for a file
 cacheSim.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\cache.dir\build.make CMakeFiles/cache.dir/cacheSim.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\cacheSim.dir\build.make CMakeFiles/cacheSim.dir/cacheSim.cpp.s
 .PHONY : cacheSim.cpp.s
 
 # Help Target
@@ -605,7 +605,7 @@ help:
 	@echo ... NightlySubmit
 	@echo ... NightlyTest
 	@echo ... NightlyUpdate
-	@echo ... cache
+	@echo ... cacheSim
 	@echo ... cacheSim.obj
 	@echo ... cacheSim.i
 	@echo ... cacheSim.s

@@ -80,13 +80,14 @@ int main(int argc, char **argv) {
 			return 0;
 		}
 
-		// DEBUG - remove this line
-		cout << "operation: " << operation;
+		/*					unComment this line if the benchmark's trace is required:			*/
+		//cout << memory.acessNum << ") operation: " << operation << endl;
 
 		string cutAddress = address_str.substr(2); // Removing the "0x" part of the address
 
-		// DEBUG - remove this line
-		cout << ", address (hex)" << cutAddress;
+		/*					unComment these 2 lines if the benchmark trace is required:			*/
+		//cout << ", address (hex)" << cutAddress << endl;
+		//cout << endl;
 
 		unsigned long int num = 0;
 		num = strtoul(cutAddress.c_str(), NULL, 16);
@@ -99,7 +100,7 @@ int main(int argc, char **argv) {
 		++memory.L1.acssesNum;
 		memory.totalTime += memory.L1.cyclesNum;
 		//--------------------------------------
-		if( memory.L1.hasBlockOf(address) ){
+		if( memory.L1.containsBlockOf(address) ){
 			memory.L1_Hit(address,operation);
 			continue;
 		}
@@ -109,7 +110,7 @@ int main(int argc, char **argv) {
 		++memory.L2.acssesNum;
        	memory.totalTime += memory.L2.cyclesNum;
 		//--------------------------------------
-		if(  memory.L2.hasBlockOf(address) ){
+		if(  memory.L2.containsBlockOf(address) ){
 			memory.L2_Hit(address,operation);
 			continue;
 		}
