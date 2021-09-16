@@ -65,7 +65,6 @@ int main(int argc, char **argv) {
 
 	/* initialize the Memory Data-Type: 2 level cache and main */
 	Memory memory(L1Assoc,L1Size,L1Cyc,L2Assoc,L2Size,L2Cyc,WrAlloc,BSize,MemCyc);
-
 	while (getline(file, line)) {
 
 		/* count the acsses to the memory */

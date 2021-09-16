@@ -169,10 +169,10 @@ struct Cache{
                                 this struct is the type that main calls                                    */
 //=========================================================================================================
 struct Memory{
-// Memory's cache levels ----------------------------
+// Memory's cache levels:
     Cache L1;
     Cache L2;
-// Memory's data------------------------------------
+// Memory's mete_data-------------------------------
     bool writePolicy;
     unsigned long int blockSize; // log2(blockSize)
     unsigned long int cyclesNum;
@@ -188,8 +188,9 @@ struct Memory{
     }
 
 
-    // Li (where i=1 OR i=2 ) got Miss for capacity or compulsary thus evacuation is required
-    void evictFrom(Cache& Li,unsigned long int address){
+
+    // vacates a block with address - due to Li (where i=1 OR i=2 ) got Miss for capacity or compulsary
+    void evacuateFrom(Cache& Li,unsigned long int address){
         assert( Li.getSet(address)[LEAST_RECENTLY_USED].valid );
         unsigned long int evictedAddress = Li.getSet(address)[LEAST_RECENTLY_USED].data;
         bool& bit = Li.getSet(address)[LEAST_RECENTLY_USED].dirtyBit;
@@ -233,7 +234,7 @@ struct Memory{
 
 
     // writes a block to a full-set in the cache (assumes that Level_1 got miss)
-    std::vector<Block>::iterator evictAndPut(unsigned long int address){
+    std::vector<Block>::iterator evacuateAndPut(unsigned long int address){
         Cache* targetCache;
         std::vector<Block>::iterator evicted;
         unsigned long int tag;
@@ -243,14 +244,14 @@ struct Memory{
             targetCache = &L1;
             evicted = L1.leastRecentlyUsed(address);
             L2.updateLRU(address); //  <----- read L2
-            evictFrom(L1,address);
+            evacuateFrom(L1,address);
             tag = L1.getTag(address);
         }
         // miss in L2 thus acsses Mem
         else{ assert( (L1.containsBlockOf(address)==false) && (L2.containsBlockOf(address)==false) );
             targetCache = &L2;
             evicted = L2.leastRecentlyUsed(address);
-            evictFrom(L2,address);
+            evacuateFrom(L2,address);
             tag = L2.getTag(address);
         }
 
@@ -259,7 +260,7 @@ struct Memory{
         evicted->data = address;
         assert ( evicted->dirtyBit == NOT_DIRTY );
 
-        targetCache->updateLRU(address); // <---- read target cache ( L1 or L2 )
+        targetCache->updateLRU(address); // <----  R E A D  the target cache ( L1 or L2 )
         return targetCache->getBlock(address);
     }
 
@@ -277,17 +278,17 @@ struct Memory{
     void L2_Hit(unsigned long address,char operation){
         std::vector<Block>& set = L1.getSet(address);
         char missInL1 = operation;
-        unsigned int usedWays = 0;
-        for( unsigned int i=0 ; i<set.size() ; ++i ) usedWays = (set[i].valid) ? (usedWays+1) : (usedWays);
+        unsigned int occupiedWaysNum = 0;
+        for( unsigned int i=0 ; i<set.size() ; ++i ) occupiedWaysNum = (set[i].valid) ? (occupiedWaysNum+1) : (occupiedWaysNum);
         
         if( WRITE==missInL1 ){
                 if(/*******************/ writePolicy==WRITE_ALLOCATE /*************/){//----->> read_Hit in L2
-                        if( usedWays < L1.totalWaysNum ){
+                        if( occupiedWaysNum < L1.totalWaysNum ){
                             putInFreeWay(address) -> dirtyBit=DIRTY;
                             return;
                         }
-                        else{ assert( usedWays == L1.totalWaysNum );
-                            evictAndPut(address) -> dirtyBit=DIRTY;
+                        else{ assert( occupiedWaysNum == L1.totalWaysNum );
+                            evacuateAndPut(address) -> dirtyBit=DIRTY;
                             return;
                         }
 
@@ -297,26 +298,26 @@ struct Memory{
                 }
 
         }else{ assert( READ==missInL1 );
-                if( usedWays < L1.totalWaysNum ){
+                if( occupiedWaysNum < L1.totalWaysNum ){
                     putInFreeWay(address);
                     return;
                 }
                 //else - no availible way
-                    evictAndPut(address);
+                    evacuateAndPut(address);
                     return;
         }
     }
                 
             
 
-    // keeping coharence by asserting the evacuation of data from L1 when evicting from l2
+    // keeping coherent by asserting the evacuation of data from L1 when evicting from l2
     void L2_snoops_L1(unsigned long int address){
         unsigned long int evictedAddress_L2 = L2.getSet(address)[LEAST_RECENTLY_USED].data;
         if( L1.containsBlockOf(evictedAddress_L2)==false ) return;
 
         (*L1.getBlock(evictedAddress_L2)) = Block(); 
-        // if the data is dirty in L1  ===>>   "we assign" dirtyBit=DIRTY also in L2
-        //                                           (but its meaningless)
+        // if the data is dirty in L1     ===>>   "we assign" dirtyBit=DIRTY in cache-Level2
+        // when evicting its L2 block                          (but its meaningless)
         }
     
 
@@ -324,32 +325,33 @@ struct Memory{
     // acssessing the data in the main Memory, and fetching it into L2 cache
     void handle_L2_Miss(unsigned long int address){
         std::vector<Block>& set = L2.getSet(address);
-        unsigned int usedWays = 0;
-        for( unsigned int i=0 ; i<set.size() ; ++i ) usedWays = (set[i].valid) ? (usedWays+1) : (usedWays);
+        unsigned int occupiedWaysNum = 0;
+        for( unsigned int i=0 ; i<set.size() ; ++i ) occupiedWaysNum = (set[i].valid) ? (occupiedWaysNum+1) : (occupiedWaysNum);
         
-        if( usedWays < L2.totalWaysNum ){
+        if( occupiedWaysNum < L2.totalWaysNum ){
             putInFreeWay(address);
             return;
         }
-        else{ assert( usedWays == L2.totalWaysNum );
+        else{ assert( occupiedWaysNum == L2.totalWaysNum );
             L2_snoops_L1(address);
-            evictAndPut(address);
+            evacuateAndPut(address);
             return;
         }
     }
     
 
-    // acssessing the data in L2 cache, and fetching it into L1 cache after bringing it from main-Mem
+
+    // acssessing the data in L2 cache, and fetching it into L1 cache after bringing it from main-Memory
     void handle_L1_Miss(unsigned long int address, char operation){
         std::vector<Block>& set = L1.getSet(address);
-        unsigned int usedWays = 0;
-        for( unsigned int i=0 ; i<set.size() ; ++i ) usedWays = (set[i].valid) ? (usedWays+1) : (usedWays);
+        unsigned int occupiedWaysNum = 0;
+        for( unsigned int i=0 ; i<set.size() ; ++i ) occupiedWaysNum = (set[i].valid) ? (occupiedWaysNum+1) : (occupiedWaysNum);
         
-        if( usedWays < L1.totalWaysNum ){
+        if( occupiedWaysNum < L1.totalWaysNum ){
             putInFreeWay(address);
         }
-        else{ assert( usedWays == L1.totalWaysNum );
-            evictAndPut(address);
+        else{ assert( occupiedWaysNum == L1.totalWaysNum );
+            evacuateAndPut(address);
         }
         
         std::vector<Block>::iterator modified = L1.getBlock(address);
@@ -362,8 +364,8 @@ struct Memory{
 
     void L1_and_L2_Miss(unsigned long int address,char operation){
         if ( (writePolicy==NO_WRITE_ALLOCATE) && (operation == WRITE) ){
-            /*      we "only" need to write the data into the
-                    block that is allready in the main memory   */
+            /*      we "only" need to write the data into
+                      its address  in the main memory                  */
                                 return;
         }
         assert( (writePolicy==WRITE_ALLOCATE) || (operation == READ) );
